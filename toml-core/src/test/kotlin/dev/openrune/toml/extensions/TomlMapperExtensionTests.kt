@@ -1,0 +1,152 @@
+package dev.openrune.toml.extensions
+
+import dev.openrune.toml.UnitTest
+import dev.openrune.toml.atomicallyEncodeTo
+import dev.openrune.toml.decode
+import dev.openrune.toml.decodeWithDefaults
+import dev.openrune.toml.encodeTo
+import dev.openrune.toml.encodeToDocument
+import dev.openrune.toml.encodeToString
+import dev.openrune.toml.model.TomlException
+import dev.openrune.toml.model.TomlValue
+import dev.openrune.toml.tomlMapper
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import kotlin.io.path.createTempDirectory
+import kotlin.io.path.createTempFile
+import kotlin.io.path.deleteIfExists
+import kotlin.io.path.listDirectoryEntries
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+class TomlMapperExtensionTests : UnitTest {
+    private data class TestObj(val xs: List<String>, val bool: Boolean)
+    private data class TestDocument(val str: String, val obj: TestObj, val int: Int?)
+    private val testDocument = TestDocument(
+        str = "a string",
+        obj = TestObj(
+            xs = listOf("foo", "bar"),
+            bool = true
+        ),
+        int = null
+    )
+    private val testDocumentDefaults = TestDocument(
+        str = "",
+        obj = TestObj(
+            xs = emptyList(),
+            bool = true
+        ),
+        int = null
+    )
+    private val mapper = tomlMapper { }
+
+    @Test
+    fun `encodeToDocument produces a valid TOML document`() {
+        val document = mapper.encodeToDocument(mapOf("foo" to "bar"))
+        assertEquals(TomlValue.Map("foo" to TomlValue.String("bar")), document)
+    }
+
+    @Test
+    fun `encodeToDocument throws serialization error on input which doesn't serialize to a valid document`() {
+        val exception = assertFailsWith<TomlException.SerializationError.NotAMap> {
+            mapper.encodeToDocument("hello")
+        }
+        assertEquals("hello", exception.sourceValue)
+        assertEquals(TomlValue.String("hello"), exception.tomlValue)
+    }
+
+    @Test
+    fun `encode and decode are inverses for appendable`() {
+        val stringBuffer = StringBuffer()
+        mapper.encodeTo(stringBuffer, testDocument)
+        val string = stringBuffer.toString()
+
+        assertEquals(
+            testDocument,
+            mapper.decode(string)
+        )
+        assertEquals(
+            testDocument,
+            mapper.decodeWithDefaults(testDocumentDefaults, string)
+        )
+    }
+
+    @Test
+    fun `encode and decode are inverses for string`() {
+        val string = mapper.encodeToString(testDocument)
+
+        assertEquals(
+            testDocument,
+            mapper.decode(string)
+        )
+        assertEquals(
+            testDocument,
+            mapper.decodeWithDefaults(testDocumentDefaults, string)
+        )
+    }
+
+    @Test
+    fun `encode and decode are inverses for stream`() {
+        val outputStream = ByteArrayOutputStream()
+        mapper.encodeTo(outputStream, testDocument)
+        val bytes = outputStream.toByteArray()
+
+        assertEquals(
+            testDocument,
+            mapper.decode(ByteArrayInputStream(bytes))
+        )
+        assertEquals(
+            testDocument,
+            mapper.decodeWithDefaults(testDocumentDefaults, ByteArrayInputStream(bytes))
+        )
+    }
+
+    @Test
+    fun `encode and decode are inverses for file`() {
+        val path = createTempFile()
+        try {
+            mapper.encodeTo(path, testDocument)
+
+            assertEquals(
+                testDocument,
+                mapper.decode(path)
+            )
+            assertEquals(
+                testDocument,
+                mapper.decodeWithDefaults(testDocumentDefaults, path)
+            )
+        } finally {
+            path.deleteIfExists()
+        }
+    }
+
+    @Test
+    fun `atomicallyEncodeTo is the inverse of decode file`() {
+        val tempDirectory = createTempDirectory()
+        try {
+            val tempFile = createTempFile(tempDirectory)
+            mapper.atomicallyEncodeTo(tempFile, testDocument)
+            assertEquals(testDocument, mapper.decode(tempFile))
+        } finally {
+            tempDirectory.toFile().deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `atomicallyEncodeTo cleans up after itself on success`() {
+        // Would be nice to have a test for the failure case as well,
+        // but that's kind of hard to mock so... ¯\_(ツ)_/¯
+        val tempDirectory = createTempDirectory()
+        try {
+            val tempFile = createTempFile(tempDirectory)
+            mapper.atomicallyEncodeTo(tempFile, testDocument)
+            val directoryEntries = tempDirectory.listDirectoryEntries()
+            assertEquals(1, directoryEntries.size)
+            assertEquals(tempFile.fileName, directoryEntries.single().fileName)
+        } finally {
+            tempDirectory.toFile().deleteRecursively()
+        }
+    }
+
+}
