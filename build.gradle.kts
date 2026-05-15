@@ -7,7 +7,7 @@ plugins {
 }
 
 val buildDirectory = System.getenv("HOSTING_DIRECTORY") ?: "D:\\OpenRune\\openrune-hosting"
-val buildNumber = "1.0"
+val buildNumber = "1.1"
 val publishedArtifacts = mapOf(
     "toml-annotations" to "toml-annotations",
     "konbini" to "toml-konbini",

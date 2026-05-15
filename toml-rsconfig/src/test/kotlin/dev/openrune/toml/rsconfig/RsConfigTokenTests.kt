@@ -40,7 +40,7 @@ class RsConfigTokenTests {
         val decoded = mapper.decodeRuneScape<Config>(input)
         assertEquals(
             Config(settings = 90, params = mapOf("4158" to 34L)),
-            decoded
+            decoded,
         )
     }
 
@@ -121,7 +121,7 @@ class RsConfigTokenTests {
         val decoded = mapper.decodeRuneScape<Config>(input)
         assertEquals(
             Config(settings = 90, params = mapOf("4158" to 34L)),
-            decoded
+            decoded,
         )
     }
 

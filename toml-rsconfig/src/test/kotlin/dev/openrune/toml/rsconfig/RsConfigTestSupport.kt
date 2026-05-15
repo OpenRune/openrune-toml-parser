@@ -21,6 +21,22 @@ internal data class ConfigAny(
     val params: Map<String, Any>? = null
 )
 
+@RsTableHeaders("varbit")
+internal data class VarbitRow(
+    val id: Int = 0,
+    val debugName: String? = null,
+    val varp: Int = 0,
+    val startBit: Int = 0,
+    val endBit: Int = 0,
+)
+
+@RsTableHeaders("npcrow")
+internal data class NpcRow(
+    val id: Int = 0,
+    val debugName: String? = null,
+    val hp: Int = 0,
+)
+
 internal class TestMappingProvider(
     override val mappings: MutableMap<String, MutableMap<String, Int>>
 ) : MappingProvider {
